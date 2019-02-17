@@ -438,14 +438,24 @@ def verify_heads(ui,repo,cache,force,branchesmap):
 
   # verify that branch has exactly one head
   t={}
+  unnamed_heads=0
   for h in repo.heads():
     (_,_,_,_,_,_,branch,_)=get_changeset(ui,repo,h)
-    if t.get(branch,False):
-      sys.stderr.write('Error: repository has at least one unnamed head: hg r%s\n' %
-          repo.changelog.rev(h))
-      if not force: return False
-    t[branch]=True
+    rev_str=str(revsymbol(repo,str(repo.changelog.rev(h))))
+    branch_str=revsymbol(repo,str(repo.changelog.rev(h))).branch()
 
+    if t.get(branch_str,False):
+      t[branch_str].append(rev_str)
+      unnamed_heads += 1
+    else:
+      t[branch]=[rev_str]
+
+  if unnamed_heads:
+    for branch, rev_list in t.iteritems():
+      if len(rev_list) > 1:
+        sys.stderr.write('Error: %s have more than one head: %s\n' %
+            (branch, ', '.join(rev_list)))
+    return force
   return True
 
 def hg2git(repourl,m,marksfile,mappingfile,headsfile,tipfile,
